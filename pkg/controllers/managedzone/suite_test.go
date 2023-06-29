@@ -38,7 +38,8 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	// "github.com/Kuadrant/multicluster-gateway-controller/pkg/dns"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns"
+	corev1 "k8s.io/api/core/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -113,12 +114,12 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	// dnsProvider := &dns.FakeProvider{}
+	dnsProvider := &dns.FakeProvider{}
 
 	err = (&ManagedZoneReconciler{
-		Client: k8sManager.GetClient(),
-		Scheme: k8sManager.GetScheme(),
-		// DNSProvider: dnsProvider,
+		Client:  k8sManager.GetClient(),
+		Scheme:  k8sManager.GetScheme(),
+		DNSProv: dnsProvider,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -149,8 +150,24 @@ var _ = Describe("ManagedZoneReconciler", func() {
 				Spec: v1alpha1.ManagedZoneSpec{
 					ID:         "example.com",
 					DomainName: "example.com",
+					ProviderRef: &v1alpha1.ProviderRef{
+						Name:      "secretName",
+						Namespace: "default",
+					},
 				},
 			}
+			providerSecrets := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "secretName",
+					Namespace: "default",
+				},
+				StringData: map[string]string{
+					"AWS_ACCESS_KEY_ID":     "balh",
+					"AWS_SECRET_ACCESS_KEY": "balh",
+					"REGION":                "blah",
+				},
+			}
+			Expect(k8sClient.Create(ctx, providerSecrets)).To(BeNil())
 		})
 
 		AfterEach(func() {

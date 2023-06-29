@@ -17,6 +17,7 @@ limitations under the License.
 package dns
 
 import (
+	"context"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
 )
 
@@ -58,6 +59,9 @@ type FakeProvider struct{}
 
 func (*FakeProvider) Ensure(dnsRecord *v1alpha1.DNSRecord, managedZone *v1alpha1.ManagedZone) error {
 	return nil
+}
+func (*FakeProvider) CreateDNSProvider(ctx context.Context, managedZone *v1alpha1.ManagedZone) (Provider, error) {
+	return nil, nil
 }
 func (*FakeProvider) Delete(dnsRecord *v1alpha1.DNSRecord, managedZone *v1alpha1.ManagedZone) error {
 	return nil
