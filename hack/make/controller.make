@@ -4,11 +4,11 @@ CONTROLLER_IMG ?= controller:$(TAG)
 LOG_LEVEL ?= 3
 
 .PHONY: build-controller
-build-controller: manifests generate fmt vet ## Build controller binary.
+build-controller: manifests generate ## Build controller binary.
 	go build -o bin/controller ./cmd/controller/main.go
 
 .PHONY: run-controller
-run-controller: manifests generate fmt vet  install
+run-controller: manifests generate install
 	go run ./cmd/controller/main.go \
 	    --metrics-bind-address=:8080 \
 	    --health-probe-bind-address=:8081 \

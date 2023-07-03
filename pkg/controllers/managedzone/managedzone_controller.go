@@ -19,6 +19,7 @@ package managedzone
 import (
 	"context"
 	"fmt"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/gateway"
 	"strings"
 
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/_internal/conditions"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns"
 )
 
 const (
@@ -41,8 +41,8 @@ const (
 // ManagedZoneReconciler reconciles a ManagedZone object
 type ManagedZoneReconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	DNSProvider dns.DNSProviderFactory
+	Scheme     *runtime.Scheme
+	DNSService gateway.HostService
 }
 
 //+kubebuilder:rbac:groups=kuadrant.io,resources=managedzones,verbs=get;list;watch;create;update;patch;delete
@@ -164,7 +164,7 @@ func (r *ManagedZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *ManagedZoneReconciler) publishManagedZone(ctx context.Context, managedZone *v1alpha1.ManagedZone) error {
 
-	DNSProvider, err := r.DNSProvider(ctx, managedZone)
+	DNSProvider, err := r.DNSService.GetProvider(ctx, managedZone)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (r *ManagedZoneReconciler) deleteManagedZone(ctx context.Context, managedZo
 		return nil
 	}
 
-	DNSProvider, err := r.DNSProvider(ctx, managedZone)
+	DNSProvider, err := r.DNSService.GetProvider(ctx, managedZone)
 	if err != nil {
 		return err
 	}

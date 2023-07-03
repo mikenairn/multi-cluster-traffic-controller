@@ -103,17 +103,17 @@ func main() {
 	placement := placement.NewOCMPlacer(mgr.GetClient())
 	provider := dnsprovider.NewProvider(mgr.GetClient())
 
+	dnsService := dns.NewService(mgr.GetClient(), provider.DNSProviderFactory, dns.NewSafeHostResolver(dns.NewDefaultHostResolver()))
+	certService := tls.NewService(mgr.GetClient(), certProvider)
+
 	if err = (&dnsrecord.DNSRecordReconciler{
-		Client:      mgr.GetClient(),
-		Scheme:      mgr.GetScheme(),
-		DNSProvider: provider.DNSProviderFactory,
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		DNSService: dnsService,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
 	}
-
-	dnsService := dns.NewService(mgr.GetClient(), dns.NewSafeHostResolver(dns.NewDefaultHostResolver()))
-	certService := tls.NewService(mgr.GetClient(), certProvider)
 
 	dnsPolicyBaseReconciler := reconcilers.NewBaseReconciler(
 		mgr.GetClient(), mgr.GetScheme(), mgr.GetAPIReader(),
@@ -125,18 +125,17 @@ func main() {
 		TargetRefReconciler: reconcilers.TargetRefReconciler{
 			BaseReconciler: dnsPolicyBaseReconciler,
 		},
-		DNSProvider: provider.DNSProviderFactory,
-		HostService: dnsService,
-		Placement:   placement,
+		DNSService: dnsService,
+		Placement:  placement,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSPolicy")
 		os.Exit(1)
 	}
 
 	if err = (&managedzone.ManagedZoneReconciler{
-		Client:      mgr.GetClient(),
-		Scheme:      mgr.GetScheme(),
-		DNSProvider: provider.DNSProviderFactory,
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		DNSService: dnsService,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ManagedZone")
 		os.Exit(1)
