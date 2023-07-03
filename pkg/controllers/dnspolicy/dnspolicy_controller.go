@@ -34,8 +34,10 @@ import (
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/_internal/conditions"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnsrecord"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/gateway"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/managedzone"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns"
+
 	"github.com/kuadrant/kuadrant-operator/pkg/reconcilers"
 )
 
@@ -54,9 +56,10 @@ func (c *DNSPolicyRefsConfig) PolicyRefsAnnotation() string {
 // DNSPolicyReconciler reconciles a DNSPolicy object
 type DNSPolicyReconciler struct {
 	reconcilers.TargetRefReconciler
-	DNSProv     managedzone.DNS
+	DNSProvider dns.DNSProviderFactory
 	HostService gateway.HostService
 	Placement   gateway.GatewayPlacer
+	DNSRecord   dnsrecord.DNSRecordReconciler
 }
 
 //+kubebuilder:rbac:groups=kuadrant.io,resources=dnspolicies,verbs=get;list;watch;create;update;patch;delete

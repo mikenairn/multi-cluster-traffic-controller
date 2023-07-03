@@ -39,8 +39,11 @@ spec:
                     type: string
                   namespace:
                     type: string
+                  type:
+                    type: string
                 required:
                 - namespace
+                - type
                 type: object
             required:
             - credentials

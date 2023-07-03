@@ -52,12 +52,9 @@ spec:
                 type: string
               namespace:
                 type: string
-              type:
-                type: string
             required:
             - name
             - namespace
-            - type
             type: object
           kind:
             description: 'Kind is a string value representing the REST resource this
@@ -94,12 +91,9 @@ spec:
                     type: string
                   namespace:
                     type: string
-                  type:
-                    type: string
                 required:
                 - name
                 - namespace
-                - type
                 type: object
             required:
             - description

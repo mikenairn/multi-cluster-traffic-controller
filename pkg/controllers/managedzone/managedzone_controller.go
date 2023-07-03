@@ -38,18 +38,11 @@ const (
 	ManagedZoneFinalizer = "kuadrant.io/managed-zone"
 )
 
-var DNSProvider dns.Provider
-
-type DNS interface {
-	//Creates a dnd provider based on credentials provided
-	CreateDNSProvider(ctx context.Context, managedZone *v1alpha1.ManagedZone) (dns.Provider, error)
-}
-
 // ManagedZoneReconciler reconciles a ManagedZone object
 type ManagedZoneReconciler struct {
 	client.Client
-	Scheme  *runtime.Scheme
-	DNSProv DNS
+	Scheme      *runtime.Scheme
+	DNSProvider dns.DNSProviderFactory
 }
 
 //+kubebuilder:rbac:groups=kuadrant.io,resources=managedzones,verbs=get;list;watch;create;update;patch;delete
@@ -59,6 +52,8 @@ type ManagedZoneReconciler struct {
 func (r *ManagedZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 	previous := &v1alpha1.ManagedZone{}
+	// log.Log.Info("jhakklahalafhfhlhlafhlafhlafhlaflhafhlafhlafhlafhlaflhafhlafhl I get here reconcile zone", "test", r)
+
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: req.Namespace, Name: req.Name}, previous)
 	if err != nil {
 		if err := client.IgnoreNotFound(err); err == nil {
@@ -70,11 +65,6 @@ func (r *ManagedZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	managedZone := previous.DeepCopy()
 
 	log.Log.V(3).Info("ManagedZoneReconciler Reconcile", "managedZone", managedZone)
-
-	DNSProvider, err = r.DNSProv.CreateDNSProvider(ctx, managedZone)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
 
 	if managedZone.DeletionTimestamp != nil && !managedZone.DeletionTimestamp.IsZero() {
 		if err := r.deleteParentZoneNSRecord(ctx, managedZone); err != nil {
@@ -154,7 +144,7 @@ func (r *ManagedZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	managedZone.Status.ObservedGeneration = managedZone.Generation
-	setManagedZoneCondition(managedZone, conditions.ConditionTypeReady, status, reason, message)
+	SetManagedZoneCondition(managedZone, conditions.ConditionTypeReady, status, reason, message)
 	err = r.Status().Update(ctx, managedZone)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -174,6 +164,10 @@ func (r *ManagedZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *ManagedZoneReconciler) publishManagedZone(ctx context.Context, managedZone *v1alpha1.ManagedZone) error {
 
+	DNSProvider, err := r.DNSProvider(ctx, managedZone)
+	if err != nil {
+		return err
+	}
 	mzResp, err := DNSProvider.EnsureManagedZone(managedZone)
 	if err != nil {
 		return err
@@ -192,7 +186,11 @@ func (r *ManagedZoneReconciler) deleteManagedZone(ctx context.Context, managedZo
 		return nil
 	}
 
-	err := DNSProvider.DeleteManagedZone(managedZone)
+	DNSProvider, err := r.DNSProvider(ctx, managedZone)
+	if err != nil {
+		return err
+	}
+	err = DNSProvider.DeleteManagedZone(managedZone)
 	if err != nil {
 		if strings.Contains(err.Error(), "was not found") {
 			log.Log.Info("ManagedZone was not found, continuing", "managedZone", managedZone.Name)
@@ -209,6 +207,7 @@ func (r *ManagedZoneReconciler) getParentZone(ctx context.Context, managedZone *
 	if managedZone.Spec.ParentManagedZone == nil {
 		return nil, nil
 	}
+	log.Log.Info("I get here Parent zone", "test", r)
 
 	parentZone := &v1alpha1.ManagedZone{}
 	err := r.Client.Get(ctx, client.ObjectKey{Namespace: managedZone.Namespace, Name: managedZone.Spec.ParentManagedZone.Name}, parentZone)
@@ -346,6 +345,6 @@ func (r *ManagedZoneReconciler) parentZoneNSRecordReady(ctx context.Context, man
 }
 
 // setManagedZoneCondition adds or updates a given condition in the ManagedZone status.
-func setManagedZoneCondition(managedZone *v1alpha1.ManagedZone, conditionType string, status metav1.ConditionStatus, reason, message string) {
+func SetManagedZoneCondition(managedZone *v1alpha1.ManagedZone, conditionType string, status metav1.ConditionStatus, reason, message string) {
 	managedZone.Status.Conditions = conditions.SetCondition(managedZone.Status.Conditions, managedZone.Generation, conditionType, status, reason, message)
 }

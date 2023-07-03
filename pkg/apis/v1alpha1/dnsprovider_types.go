@@ -36,9 +36,9 @@ type DnsProviderSpec struct {
 
 type DNSProviderCredentials struct {
 	// +required
-	Namespace string `json:"namespace"`
-
-	Name string `json:"name,omitempty"`
+	Namespace    string `json:"namespace"`
+	Name         string `json:"name,omitempty"`
+	ProviderType string `json:"type"`
 }
 
 type DNSProviderConfig struct {
@@ -59,9 +59,8 @@ type DNSProviderConfigRoute53 struct {
 
 type ProviderRef struct {
 	//+required
-	Namespace    string `json:"namespace"`
-	Name         string `json:"name"`
-	ProviderType string `json:"type"`
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
 }
 
 // +kubebuilder:object:root=true

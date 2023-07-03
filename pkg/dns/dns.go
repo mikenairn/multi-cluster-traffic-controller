@@ -21,6 +21,8 @@ import (
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
 )
 
+type DNSProviderFactory func(ctx context.Context, managedZone *v1alpha1.ManagedZone) (Provider, error)
+
 // Provider knows how to manage DNS zones only as pertains to routing.
 type Provider interface {
 
@@ -70,6 +72,7 @@ func (*FakeProvider) EnsureManagedZone(managedZone *v1alpha1.ManagedZone) (Manag
 	return ManagedZoneOutput{}, nil
 }
 func (*FakeProvider) DeleteManagedZone(managedZone *v1alpha1.ManagedZone) error { return nil }
+
 func (*FakeProvider) HealthCheckReconciler() HealthCheckReconciler {
 	return &FakeHealthCheckReconciler{}
 }

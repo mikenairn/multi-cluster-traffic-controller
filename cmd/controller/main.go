@@ -104,9 +104,9 @@ func main() {
 	provider := dnsprovider.NewProvider(mgr.GetClient())
 
 	if err = (&dnsrecord.DNSRecordReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		DNSProv: provider,
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		DNSProvider: provider.DNSProviderFactory,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
@@ -125,7 +125,7 @@ func main() {
 		TargetRefReconciler: reconcilers.TargetRefReconciler{
 			BaseReconciler: dnsPolicyBaseReconciler,
 		},
-		DNSProv:     provider,
+		DNSProvider: provider.DNSProviderFactory,
 		HostService: dnsService,
 		Placement:   placement,
 	}).SetupWithManager(mgr); err != nil {
@@ -134,9 +134,9 @@ func main() {
 	}
 
 	if err = (&managedzone.ManagedZoneReconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		DNSProv: provider,
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		DNSProvider: provider.DNSProviderFactory,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ManagedZone")
 		os.Exit(1)

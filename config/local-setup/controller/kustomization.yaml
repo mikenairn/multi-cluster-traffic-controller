@@ -43,16 +43,6 @@ replacements:
           name: mgc-dev-mz
         fieldPaths:
           - spec.domainName
-  - source:
-        kind: ConfigMap
-        name: provider-config
-        version: v1
-        fieldPath: data.TYPE
-    targets:
-      - select:
-          kind: ManagedZone
-          name: mgc-dev-mz
-        fieldPaths:
-          - spec.provider.type
+ 
 
             

@@ -2,6 +2,8 @@ package dnsprovider
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -14,79 +16,67 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var DNSProvider dns.Provider
+var errUnsupportedProvider = fmt.Errorf("provider type given is not supported")
 
-type provider struct {
+type providerFactory struct {
 	client client.Client
 }
 
-func NewProvider(c client.Client) *provider {
+func NewProvider(c client.Client) *providerFactory {
 
-	return &provider{
+	return &providerFactory{
 		client: c,
 	}
 }
 
-func (p *provider) dnsProviderSecret(ctx context.Context, managedZone *v1alpha1.ManagedZone) (*v1alpha1.DNSProviderConfig, error) {
-	dnsprovider := &v1alpha1.DNSProvider{
+func (p *providerFactory) loadProviderSecret(ctx context.Context, managedZone *v1alpha1.ManagedZone) (*v1.Secret, *v1alpha1.DNSProvider, error) {
+	dnsProvider := &v1alpha1.DNSProvider{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      managedZone.Spec.ProviderRef.Name,
 			Namespace: managedZone.Spec.ProviderRef.Namespace,
 		}}
-	log.Log.Info("Reconciling DNS Provider:", "Name:", dnsprovider.Name)
-	err := p.client.Get(ctx, client.ObjectKeyFromObject(dnsprovider), dnsprovider)
+	fmt.Print("I get here4")
+
+	log.Log.Info("Reconciling DNS Provider:", "Name:", dnsProvider.Name)
+	err := p.client.Get(ctx, client.ObjectKeyFromObject(dnsProvider), dnsProvider)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	fmt.Print("I get here5")
 
 	providerSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      dnsprovider.Spec.Credentials.Name,
-			Namespace: dnsprovider.Spec.Credentials.Namespace,
+			Name:      dnsProvider.Spec.Credentials.Name,
+			Namespace: dnsProvider.Spec.Credentials.Namespace,
 		}}
-	log.Log.Info("Reconciling DNS provider secret:", "secretName", providerSecret.Name)
-	err = p.client.Get(ctx, client.ObjectKeyFromObject(providerSecret), providerSecret)
-	if err != nil {
-		return nil, err
-	}
-	aws := &v1alpha1.DNSProviderConfig{}
 
-	if len(providerSecret.Data) == 0 {
-		log.Log.Info("Secret is empty")
-		return nil, nil
-	}
-	if aws.Route53 == nil {
-		aws.Route53 = &v1alpha1.DNSProviderConfigRoute53{}
+	if err := p.client.Get(ctx, client.ObjectKeyFromObject(providerSecret), providerSecret); err != nil {
+
+		return nil, nil, err
+
 	}
 
-	if managedZone.Spec.ProviderRef.ProviderType == "AWS" {
-
-		if value, ok := providerSecret.Data["AWS_SECRET_ACCESS_KEY"]; ok {
-			aws.Route53.SecretAccessKey = string(value)
-		}
-
-		if value, ok := providerSecret.Data["AWS_ACCESS_KEY_ID"]; ok {
-			aws.Route53.AccessKeyID = string(value)
-		}
-
-		if value, ok := providerSecret.Data["REGION"]; ok {
-			aws.Route53.Region = string(value)
-		}
-	}
-
-	return aws, nil
+	return providerSecret, dnsProvider, nil
 }
 
-func (p *provider) CreateDNSProvider(ctx context.Context, managedZone *v1alpha1.ManagedZone) (dns.Provider, error) {
-	creds, err := p.dnsProviderSecret(ctx, managedZone)
-	if err != nil {
-		return nil, err
-	}
+func (p *providerFactory) DNSProviderFactory(ctx context.Context, managedZone *v1alpha1.ManagedZone) (dns.Provider, error) {
+	// fmt.Print("I get here3")
 
-	switch managedZone.Spec.ProviderRef.ProviderType {
+	creds, provider, err := p.loadProviderSecret(ctx, managedZone)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load dns provider secret: %v", err)
+	}
+	var DNSProvider dns.Provider
+
+	switch strings.ToUpper(provider.Spec.Credentials.ProviderType) {
 	case "AWS":
 		log.Log.Info("Creating DNS provider for provider type AWS")
-		DNSProvider, _ = aws.NewDNSProvider(*creds)
+		DNSProvider, err := aws.NewProviderFromSecret(creds)
+		if err != nil {
+
+			return nil, fmt.Errorf("unable to create dns provider from secret: %v", err)
+
+		}
 		return DNSProvider, nil
 
 	case "GCP":
@@ -96,8 +86,7 @@ func (p *provider) CreateDNSProvider(ctx context.Context, managedZone *v1alpha1.
 		log.Log.Info("AZURE")
 
 	default:
-		log.Log.Info("No DNS provider found")
-		return nil, nil
+		return nil, errUnsupportedProvider
 	}
 
 	return DNSProvider, nil

@@ -76,7 +76,7 @@ test-integration: manifests generate fmt vet envtest ## Run integration tests.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./pkg/controllers/gateway -tags=integration,unit -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -tags=integration,unit -coverprofile cover.out
 
 .PHONY: local-setup
 local-setup: kind kustomize helm yq dev-tls istioctl operator-sdk clusteradm subctl ## Setup multi cluster traffic controller locally using kind.
