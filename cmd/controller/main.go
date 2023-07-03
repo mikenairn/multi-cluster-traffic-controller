@@ -103,11 +103,13 @@ func main() {
 	placement := placement.NewOCMPlacer(mgr.GetClient())
 	provider := dnsprovider.NewProvider(mgr.GetClient())
 
-	if err = (&dnsrecord.DNSRecordReconciler{
+	dnsRecordReconciler := dnsrecord.DNSRecordReconciler{
 		Client:      mgr.GetClient(),
 		Scheme:      mgr.GetScheme(),
 		DNSProvider: provider.DNSProviderFactory,
-	}).SetupWithManager(mgr); err != nil {
+	}
+
+	if err = (&dnsRecordReconciler).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
 	}
@@ -128,6 +130,7 @@ func main() {
 		DNSProvider: provider.DNSProviderFactory,
 		HostService: dnsService,
 		Placement:   placement,
+		DNSRecord:   dnsRecordReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSPolicy")
 		os.Exit(1)
