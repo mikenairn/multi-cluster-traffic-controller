@@ -38,10 +38,24 @@ type Service struct {
 	controlClient client.Client
 
 	hostResolver HostResolver
+
+	providerFactory DNSProviderFactory
 }
 
-func NewService(controlClient client.Client, hostResolv HostResolver) *Service {
-	return &Service{controlClient: controlClient, hostResolver: hostResolv}
+func NewService(controlClient client.Client, providerFactory DNSProviderFactory, hostResolv HostResolver) *Service {
+	return &Service{controlClient: controlClient, providerFactory: providerFactory, hostResolver: hostResolv}
+}
+
+func (s *Service) GetProviderForManagedZone(ctx context.Context, managedZone *v1alpha1.ManagedZone) (Provider, error) {
+	return s.providerFactory(ctx, managedZone)
+}
+
+func (s *Service) GetProviderForDNSRecord(ctx context.Context, dnsRecord *v1alpha1.DNSRecord) (Provider, error) {
+	managedZone, err := s.GetManagedZoneForDNSRecord(ctx, dnsRecord)
+	if err != nil {
+		return nil, err
+	}
+	return s.GetProviderForManagedZone(ctx, managedZone)
 }
 
 func (s *Service) resolveIPS(ctx context.Context, addresses []gatewayv1beta1.GatewayAddress) ([]string, error) {
@@ -214,6 +228,22 @@ func (s *Service) GetManagedZoneForHost(ctx context.Context, host string, t traf
 		return nil, "", err
 	}
 	return FindMatchingManagedZone(host, host, managedZones.Items)
+}
+
+// GetManagedZoneForHost returns the current ManagedZone for the given DNSRecord.
+func (s *Service) GetManagedZoneForDNSRecord(ctx context.Context, dnsRecord *v1alpha1.DNSRecord) (*v1alpha1.ManagedZone, error) {
+
+	if dnsRecord.Spec.ManagedZoneRef == nil {
+		return nil, fmt.Errorf("no managed zone configured for : %s", dnsRecord.Name)
+	}
+
+	managedZone := &v1alpha1.ManagedZone{}
+	err := s.controlClient.Get(ctx, client.ObjectKey{Namespace: dnsRecord.Namespace, Name: dnsRecord.Spec.ManagedZoneRef.Name}, managedZone)
+	if err != nil {
+		return nil, err
+	}
+
+	return managedZone, nil
 }
 
 func FindMatchingManagedZone(originalHost, host string, zones []v1alpha1.ManagedZone) (*v1alpha1.ManagedZone, string, error) {

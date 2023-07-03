@@ -39,7 +39,7 @@ func (r *DNSPolicyReconciler) reconcileGatewayDNSRecords(ctx context.Context, ga
 
 	gatewayAccessor := traffic.NewGateway(gateway)
 
-	managedHosts, err := r.HostService.GetManagedHosts(ctx, gatewayAccessor)
+	managedHosts, err := r.DNSService.GetManagedHosts(ctx, gatewayAccessor)
 	if err != nil {
 		return err
 	}
@@ -95,12 +95,12 @@ func (r *DNSPolicyReconciler) reconcileGatewayDNSRecords(ctx context.Context, ga
 			}
 			return nil
 		}
-		var dnsRecord, err = r.HostService.CreateDNSRecord(ctx, mh.Subdomain, mh.ManagedZone, gateway)
+		var dnsRecord, err = r.DNSService.CreateDNSRecord(ctx, mh.Subdomain, mh.ManagedZone, gateway)
 		if err := client.IgnoreAlreadyExists(err); err != nil {
 			return fmt.Errorf("failed to create dns record for host %s : %s ", mh.Host, err)
 		}
 		if k8serrors.IsAlreadyExists(err) {
-			dnsRecord, err = r.HostService.GetDNSRecord(ctx, mh.Subdomain, mh.ManagedZone, gateway)
+			dnsRecord, err = r.DNSService.GetDNSRecord(ctx, mh.Subdomain, mh.ManagedZone, gateway)
 			if err != nil {
 				return fmt.Errorf("failed to get dns record for host %s : %s ", mh.Host, err)
 			}
@@ -108,7 +108,7 @@ func (r *DNSPolicyReconciler) reconcileGatewayDNSRecords(ctx context.Context, ga
 
 		log.Info("setting dns gwAddresses for gateway listener", "listener", dnsRecord.Name, "values", gwAddresses)
 
-		if err := r.HostService.SetEndpoints(ctx, gwAddresses, dnsRecord, dnsPolicy); err != nil {
+		if err := r.DNSService.SetEndpoints(ctx, gwAddresses, dnsRecord, dnsPolicy); err != nil {
 			return fmt.Errorf("failed to add dns record gwAddresses %s %v", err, gwAddresses)
 		}
 
