@@ -134,40 +134,23 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // deleteRecord deletes record(s) in the DNSPRovider(i.e. route53) configured by the ManagedZone assigned to this
 // DNSRecord (dnsRecord.Status.ParentManagedZone).
 func (r *DNSRecordReconciler) deleteRecord(ctx context.Context, dnsRecord *v1alpha1.DNSRecord) error {
-	managedZone := &v1alpha1.ManagedZone{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dnsRecord.Spec.ManagedZoneRef.Name,
-			Namespace: dnsRecord.Namespace,
-		},
-	}
-	err := r.Get(ctx, client.ObjectKeyFromObject(managedZone), managedZone, &client.GetOptions{})
-	if err != nil {
-		// If the Managed Zone isn't found, just continue
-		return client.IgnoreNotFound(err)
-	}
-	managedZoneReady := meta.IsStatusConditionTrue(managedZone.Status.Conditions, "Ready")
-
-	if !managedZoneReady {
-		return fmt.Errorf("the managed zone is not in a ready state : %s", managedZone.Name)
-	}
-
-	dnsProvider, err := r.DNSProvider(ctx, managedZone)
+	dnsProvider, err := r.DNSProvider(ctx, *dnsRecord.Spec.Provider)
 	if err != nil {
 		return err
 	}
 
-	err = dnsProvider.Delete(dnsRecord, managedZone)
+	err = dnsProvider.Delete(dnsRecord)
 	if err != nil {
 		if strings.Contains(err.Error(), "was not found") {
-			log.Log.Info("Record not found in managed zone, continuing", "dnsRecord", dnsRecord.Name, "managedZone", managedZone.Name)
+			log.Log.Info("Record not found in zone, continuing", "dnsRecord", dnsRecord.Name)
 			return nil
 		} else if strings.Contains(err.Error(), "no endpoints") {
-			log.Log.Info("DNS record had no endpoint, continuing", "dnsRecord", dnsRecord.Name, "managedZone", managedZone.Name)
+			log.Log.Info("DNS record had no endpoint, continuing", "dnsRecord", dnsRecord.Name)
 			return nil
 		}
 		return err
 	}
-	log.Log.Info("Deleted DNSRecord in manage zone", "dnsRecord", dnsRecord.Name, "managedZone", managedZone.Name)
+	log.Log.Info("Deleted DNSRecord in manage zone", "dnsRecord", dnsRecord.Name)
 
 	return nil
 }
@@ -176,36 +159,20 @@ func (r *DNSRecordReconciler) deleteRecord(ctx context.Context, dnsRecord *v1alp
 // DNSRecord (dnsRecord.Status.ParentManagedZone).
 func (r *DNSRecordReconciler) publishRecord(ctx context.Context, dnsRecord *v1alpha1.DNSRecord) error {
 
-	managedZone := &v1alpha1.ManagedZone{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      dnsRecord.Spec.ManagedZoneRef.Name,
-			Namespace: dnsRecord.Namespace,
-		},
-	}
-	err := r.Get(ctx, client.ObjectKeyFromObject(managedZone), managedZone, &client.GetOptions{})
-	if err != nil {
-		return err
-	}
-	managedZoneReady := meta.IsStatusConditionTrue(managedZone.Status.Conditions, "Ready")
-
-	if !managedZoneReady {
-		return fmt.Errorf("the managed zone is not in a ready state : %s", managedZone.Name)
-	}
-
 	if dnsRecord.Generation == dnsRecord.Status.ObservedGeneration {
-		log.Log.V(3).Info("Skipping managed zone to which the DNS dnsRecord is already published", "dnsRecord", dnsRecord.Name, "managedZone", managedZone.Name)
+		log.Log.V(3).Info("Skipping managed zone to which the DNS dnsRecord is already published", "dnsRecord", dnsRecord.Name)
 		return nil
 	}
-	dnsProvider, err := r.DNSProvider(ctx, managedZone)
+	dnsProvider, err := r.DNSProvider(ctx, *dnsRecord.Spec.Provider)
 	if err != nil {
 		return err
 	}
 
-	err = dnsProvider.Ensure(dnsRecord, managedZone)
+	err = dnsProvider.Ensure(dnsRecord)
 	if err != nil {
 		return err
 	}
-	log.Log.Info("Published DNSRecord to manage zone", "dnsRecord", dnsRecord.Name, "managedZone", managedZone.Name)
+	log.Log.Info("Published DNSRecord to manage zone", "dnsRecord", dnsRecord.Name)
 
 	return nil
 }

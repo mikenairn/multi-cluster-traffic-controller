@@ -1,0 +1,17 @@
+apiVersion: kuadrant.io/v1alpha1
+kind: DNSPolicy
+metadata:
+  name: prod-web
+  namespace: multi-cluster-gateways
+spec:
+  targetRef:
+    name: prod-web
+    group: gateway.networking.k8s.io
+    kind: Gateway
+  provider:
+    secretRef:
+      name: mgc-aws-credentials
+      namespace: multi-cluster-gateways
+    config:
+      zoneIDFilter:
+        - Z04114632NOABXYWH93QU

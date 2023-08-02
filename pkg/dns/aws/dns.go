@@ -18,14 +18,17 @@ package aws
 
 import (
 	"fmt"
+	"net"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/go-logr/logr"
+	"github.com/linki/instrumented_http"
+	"github.com/pkg/errors"
 
 	v1 "k8s.io/api/core/v1"
 	kerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -45,37 +48,55 @@ const (
 )
 
 type Route53DNSProvider struct {
-	client *InstrumentedRoute53
+	client *route53.Route53
 	logger logr.Logger
+	// only consider hosted zones managing domains ending in this suffix
+	//domainFilter endpoint.DomainFilter
+	// filter hosted zones by id
+	zoneIDFilter dns.ZoneIDFilter
+	// filter hosted zones by type (e.g. private or public)
+	//zoneTypeFilter provider.ZoneTypeFilter
+	// filter hosted zones by tags
+	//zoneTagFilter provider.ZoneTagFilter
 
 	healthCheckReconciler dns.HealthCheckReconciler
 }
 
 var _ dns.Provider = &Route53DNSProvider{}
 
-func NewProviderFromSecret(s *v1.Secret) (*Route53DNSProvider, error) {
-
-	config := aws.NewConfig()
-	sessionOpts := session.Options{
-		Config: *config,
-	}
+func NewProviderFromSecret(s *v1.Secret, providerConfig *v1alpha1.DNSProviderConfig) (*Route53DNSProvider, error) {
 	if string(s.Data["AWS_ACCESS_KEY_ID"]) == "" || string(s.Data["AWS_SECRET_ACCESS_KEY"]) == "" {
 		return nil, fmt.Errorf("AWS Provider credentials is empty")
 	}
 
-	sessionOpts.Config.Credentials = credentials.NewStaticCredentials(string(s.Data["AWS_ACCESS_KEY_ID"]), string(s.Data["AWS_SECRET_ACCESS_KEY"]), "")
-	sessionOpts.SharedConfigState = session.SharedConfigDisable
-	sess, err := session.NewSessionWithOptions(sessionOpts)
-	if err != nil {
-		return nil, fmt.Errorf("unable to create aws session: %s", err)
-	}
+	config := aws.NewConfig().WithMaxRetries(3)
+	config.WithHTTPClient(
+		instrumented_http.NewClient(config.HTTPClient, &instrumented_http.Callbacks{
+			PathProcessor: func(path string) string {
+				parts := strings.Split(path, "/")
+				return parts[len(parts)-1]
+			},
+		}),
+	)
+	config.WithCredentials(
+		credentials.NewStaticCredentials(string(s.Data["AWS_ACCESS_KEY_ID"]), string(s.Data["AWS_SECRET_ACCESS_KEY"]), ""),
+	)
 	if string(s.Data["REGION"]) != "" {
-		sess.Config.WithRegion(string(s.Data["REGION"]))
+		config.WithRegion(string(s.Data["REGION"]))
+	}
+
+	session, err := session.NewSessionWithOptions(session.Options{
+		Config:            *config,
+		SharedConfigState: session.SharedConfigDisable,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to instantiate AWS session")
 	}
 
 	p := &Route53DNSProvider{
-		client: &InstrumentedRoute53{route53.New(sess, config)},
-		logger: log.Log.WithName("aws-route53").WithValues("region", config.Region),
+		client:       route53.New(session),
+		logger:       log.Log.WithName("aws-route53").WithValues("region", config.Region),
+		zoneIDFilter: dns.NewZoneIDFilter(providerConfig.ZoneIDFilter),
 	}
 
 	if err := validateServiceEndpoints(p); err != nil {
@@ -92,87 +113,35 @@ const (
 	deleteAction action = "DELETE"
 )
 
-func (p *Route53DNSProvider) Ensure(record *v1alpha1.DNSRecord, managedZone *v1alpha1.ManagedZone) error {
-	return p.change(record, managedZone, upsertAction)
-}
-
-func (p *Route53DNSProvider) Delete(record *v1alpha1.DNSRecord, managedZone *v1alpha1.ManagedZone) error {
-	return p.change(record, managedZone, deleteAction)
-}
-
-func (p *Route53DNSProvider) EnsureManagedZone(zone *v1alpha1.ManagedZone) (dns.ManagedZoneOutput, error) {
-	var zoneID string
-	if zone.Spec.ID != "" {
-		zoneID = zone.Spec.ID
-	} else {
-		zoneID = zone.Status.ID
-	}
-
-	var managedZoneOutput dns.ManagedZoneOutput
-
-	if zoneID != "" {
-		getResp, err := p.client.GetHostedZone(&route53.GetHostedZoneInput{
-			Id: &zoneID,
-		})
-		if err != nil {
-			log.Log.Error(err, "failed to get hosted zone")
-			return managedZoneOutput, err
-		}
-
-		_, err = p.client.UpdateHostedZoneComment(&route53.UpdateHostedZoneCommentInput{
-			Comment: &zone.Spec.Description,
-			Id:      &zoneID,
-		})
-		if err != nil {
-			log.Log.Error(err, "failed to update hosted zone comment")
-		}
-
-		managedZoneOutput.ID = *getResp.HostedZone.Id
-		managedZoneOutput.RecordCount = *getResp.HostedZone.ResourceRecordSetCount
-		managedZoneOutput.NameServers = getResp.DelegationSet.NameServers
-
-		return managedZoneOutput, nil
-	}
-
-	//ToDo callerRef must be unique, but this can cause duplicates if the status can't be written back during a
-	//reconciliation that successfully created a new hosted zone i.e. the object has been modified; please apply your
-	//changes to the latest version and try again
-	callerRef := time.Now().Format("20060102150405")
-	// Create the hosted zone
-	createResp, err := p.client.CreateHostedZone(&route53.CreateHostedZoneInput{
-		CallerReference: &callerRef,
-		Name:            &zone.Spec.DomainName,
-		HostedZoneConfig: &route53.HostedZoneConfig{
-			Comment:     &zone.Spec.Description,
-			PrivateZone: aws.Bool(false),
-		},
-	})
+func (p *Route53DNSProvider) ListZones() (dns.ZoneList, error) {
+	var zoneList dns.ZoneList
+	zones, err := p.zones()
 	if err != nil {
-		log.Log.Error(err, "failed to create hosted zone")
-		return managedZoneOutput, err
+		return zoneList, err
 	}
-	managedZoneOutput.ID = *createResp.HostedZone.Id
-	managedZoneOutput.RecordCount = *createResp.HostedZone.ResourceRecordSetCount
-	managedZoneOutput.NameServers = createResp.DelegationSet.NameServers
-	return managedZoneOutput, nil
+	for _, zone := range zones {
+		dnsName := removeTrailingDot(*zone.Name)
+		zoneList.Items = append(zoneList.Items, &dns.Zone{
+			ID:   zone.Id,
+			Name: &dnsName,
+		})
+	}
+	return zoneList, nil
 }
 
-func (p *Route53DNSProvider) DeleteManagedZone(zone *v1alpha1.ManagedZone) error {
-	_, err := p.client.DeleteHostedZone(&route53.DeleteHostedZoneInput{
-		Id: &zone.Status.ID,
-	})
-	if err != nil {
-		log.Log.Error(err, "failed to delete hosted zone")
-		return err
-	}
-	return nil
+func (p *Route53DNSProvider) Ensure(record *v1alpha1.DNSRecord) error {
+	return p.change(record, upsertAction)
+}
+
+func (p *Route53DNSProvider) Delete(record *v1alpha1.DNSRecord) error {
+	return p.change(record, deleteAction)
 }
 
 func (p *Route53DNSProvider) HealthCheckReconciler() dns.HealthCheckReconciler {
 	if p.healthCheckReconciler == nil {
 		p.healthCheckReconciler = dns.NewCachedHealthCheckReconciler(
 			p,
-			NewRoute53HealthCheckReconciler(p.client.route53),
+			NewRoute53HealthCheckReconciler(*p.client),
 		)
 	}
 
@@ -186,31 +155,94 @@ func (*Route53DNSProvider) ProviderSpecific() dns.ProviderSpecificLabels {
 	}
 }
 
-func (p *Route53DNSProvider) change(record *v1alpha1.DNSRecord, managedZone *v1alpha1.ManagedZone, action action) error {
+// Zones returns the list of hosted zones.
+func (p *Route53DNSProvider) zones() (map[string]*route53.HostedZone, error) {
+	//if p.zonesCache.zones != nil && time.Since(p.zonesCache.age) < p.zonesCache.duration {
+	//	log.Debug("Using cached zones list")
+	//	return p.zonesCache.zones, nil
+	//}
+	//log.Debug("Refreshing zones list cache")
+
+	zones := make(map[string]*route53.HostedZone)
+
+	var tagErr error
+	f := func(resp *route53.ListHostedZonesOutput, lastPage bool) (shouldContinue bool) {
+		for _, zone := range resp.HostedZones {
+			if !p.zoneIDFilter.Match(aws.StringValue(zone.Id)) {
+				continue
+			}
+			//
+			//if !p.zoneTypeFilter.Match(zone) {
+			//	continue
+			//}
+			//
+			//if !p.domainFilter.Match(aws.StringValue(zone.Name)) {
+			//	continue
+			//}
+
+			// Only fetch tags if a tag filter was specified
+			//if !p.zoneTagFilter.IsEmpty() {
+			//	tags, err := p.tagsForZone(ctx, *zone.Id)
+			//	if err != nil {
+			//		tagErr = err
+			//		return false
+			//	}
+			//	if !p.zoneTagFilter.Match(tags) {
+			//		continue
+			//	}
+			//}
+
+			zones[aws.StringValue(zone.Id)] = zone
+		}
+
+		return true
+	}
+
+	err := p.client.ListHostedZonesPages(&route53.ListHostedZonesInput{}, f)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list hosted zones")
+	}
+	if tagErr != nil {
+		return nil, errors.Wrap(tagErr, "failed to list zones tags")
+	}
+
+	for _, zone := range zones {
+		log.Log.V(1).Info("Considering zone", "zone.Id", aws.StringValue(zone.Id), "zone.Name", aws.StringValue(zone.Name))
+	}
+
+	//if p.zonesCache.duration > time.Duration(0) {
+	//	p.zonesCache.zones = zones
+	//	p.zonesCache.age = time.Now()
+	//}
+
+	return zones, nil
+}
+
+func (p *Route53DNSProvider) change(record *v1alpha1.DNSRecord, action action) error {
 	// Configure records.
 	if len(record.Spec.Endpoints) == 0 {
 		return nil
 	}
-	err := p.updateRecord(record, managedZone.Status.ID, string(action))
+	err := p.updateRecord(record, string(action))
 	if err != nil {
-		return fmt.Errorf("failed to update record in route53 hosted zone %s: %v", managedZone.Status.ID, err)
+		return fmt.Errorf("failed to update record in route53 hosted zone %s: %v", *record.Spec.ZoneID, err)
 	}
 	switch action {
 	case upsertAction:
-		p.logger.Info("Upserted DNS record", "record", record.Spec, "hostedZoneID", managedZone.Status.ID)
+		p.logger.Info("Upserted DNS record", "record", record.Spec, "hostedZoneID", *record.Spec.ZoneID)
 	case deleteAction:
-		p.logger.Info("Deleted DNS record", "record", record.Spec, "hostedZoneID", managedZone.Status.ID)
+		p.logger.Info("Deleted DNS record", "record", record.Spec, "hostedZoneID", *record.Spec.ZoneID)
 	}
 	return nil
 }
 
-func (p *Route53DNSProvider) updateRecord(record *v1alpha1.DNSRecord, zoneID, action string) error {
+func (p *Route53DNSProvider) updateRecord(record *v1alpha1.DNSRecord, action string) error {
 
 	if len(record.Spec.Endpoints) == 0 {
 		return fmt.Errorf("no endpoints")
 	}
 
-	input := route53.ChangeResourceRecordSetsInput{HostedZoneId: aws.String(zoneID)}
+	input := route53.ChangeResourceRecordSetsInput{HostedZoneId: aws.String(*record.Spec.ZoneID)}
 
 	expectedEndpointsMap := make(map[string]struct{})
 	var changes []*route53.Change
@@ -245,9 +277,9 @@ func (p *Route53DNSProvider) updateRecord(record *v1alpha1.DNSRecord, zoneID, ac
 	}
 	resp, err := p.client.ChangeResourceRecordSets(&input)
 	if err != nil {
-		return fmt.Errorf("couldn't update DNS record %s in zone %s: %v", record.Name, zoneID, err)
+		return fmt.Errorf("couldn't update DNS record %s in zone %s: %v", record.Name, *record.Spec.ZoneID, err)
 	}
-	p.logger.Info("Updated DNS record", "record", record, "zone", zoneID, "response", resp)
+	p.logger.Info("Updated DNS record", "record", record, "zone", *record.Spec.ZoneID, "response", resp)
 	return nil
 }
 
@@ -338,4 +370,13 @@ func validateServiceEndpoints(provider *Route53DNSProvider) error {
 		errs = append(errs, fmt.Errorf("failed to list route53 hosted zones: %v", err))
 	}
 	return kerrors.NewAggregate(errs)
+}
+
+// removeTrailingDot ensures that the hostname receives a trailing dot if it hasn't already.
+func removeTrailingDot(hostname string) string {
+	if net.ParseIP(hostname) != nil {
+		return hostname
+	}
+
+	return strings.TrimSuffix(hostname, ".")
 }

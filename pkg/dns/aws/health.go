@@ -6,7 +6,6 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
-	"github.com/aws/aws-sdk-go/service/route53/route53iface"
 	"github.com/rs/xid"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,12 +27,12 @@ var (
 )
 
 type Route53HealthCheckReconciler struct {
-	client route53iface.Route53API
+	client route53.Route53
 }
 
 var _ dns.HealthCheckReconciler = &Route53HealthCheckReconciler{}
 
-func NewRoute53HealthCheckReconciler(client route53iface.Route53API) *Route53HealthCheckReconciler {
+func NewRoute53HealthCheckReconciler(client route53.Route53) *Route53HealthCheckReconciler {
 	return &Route53HealthCheckReconciler{
 		client: client,
 	}

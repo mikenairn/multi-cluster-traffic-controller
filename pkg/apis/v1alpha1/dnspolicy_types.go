@@ -36,6 +36,26 @@ type DNSPolicySpec struct {
 
 	// +optional
 	LoadBalancing *LoadBalancingSpec `json:"loadBalancing"`
+
+	// +required
+	Provider *DNSProvider `json:"provider"`
+}
+
+type DNSProvider struct {
+	// +required
+	SecretRef *SecretRef `json:"secretRef"`
+	// +optional
+	Config *DNSProviderConfig `json:"config"`
+}
+
+type DNSProviderConfig struct {
+	ZoneIDFilter []string `json:"zoneIDFilter"`
+}
+
+type SecretRef struct {
+	//+required
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
 }
 
 type LoadBalancingSpec struct {

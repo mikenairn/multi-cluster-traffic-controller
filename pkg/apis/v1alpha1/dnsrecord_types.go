@@ -102,12 +102,15 @@ func (e *Endpoint) String() string {
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// +kubebuilder:validation:Required
-	// +required
-	ManagedZoneRef *ManagedZoneReference `json:"managedZone,omitempty"`
 	// +kubebuilder:validation:MinItems=1
 	// +optional
 	Endpoints []*Endpoint `json:"endpoints"`
+
+	// +required
+	Provider *DNSProvider `json:"provider"`
+
+	// +required
+	ZoneID *string `json:"zoneID"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord

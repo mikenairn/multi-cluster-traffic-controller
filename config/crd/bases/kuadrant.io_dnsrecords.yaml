@@ -86,15 +86,35 @@ spec:
                   type: object
                 minItems: 1
                 type: array
-              managedZone:
-                description: ManagedZoneReference holds a reference to a ManagedZone
+              provider:
                 properties:
-                  name:
-                    description: '`name` is the name of the managed zone. Required'
-                    type: string
+                  config:
+                    properties:
+                      zoneIDFilter:
+                        items:
+                          type: string
+                        type: array
+                    required:
+                    - zoneIDFilter
+                    type: object
+                  secretRef:
+                    properties:
+                      name:
+                        type: string
+                      namespace:
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                    type: object
                 required:
-                - name
+                - secretRef
                 type: object
+              zoneID:
+                type: string
+            required:
+            - provider
+            - zoneID
             type: object
           status:
             description: DNSRecordStatus defines the observed state of DNSRecord

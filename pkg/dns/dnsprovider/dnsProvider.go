@@ -28,11 +28,11 @@ func NewProvider(c client.Client) *providerFactory {
 }
 
 // depending on the provider type specified in the form of a custom secret type https://kubernetes.io/docs/concepts/configuration/secret/#secret-types in the dnsprovider secret it returns a dnsprovider.
-func (p *providerFactory) DNSProviderFactory(ctx context.Context, managedZone *v1alpha1.ManagedZone) (dns.Provider, error) {
+func (p *providerFactory) DNSProviderFactory(ctx context.Context, provider v1alpha1.DNSProvider) (dns.Provider, error) {
 	providerSecret := &v1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      managedZone.Spec.SecretRef.Name,
-			Namespace: managedZone.Spec.SecretRef.Namespace,
+			Name:      provider.SecretRef.Name,
+			Namespace: provider.SecretRef.Namespace,
 		}}
 
 	if err := p.Client.Get(ctx, client.ObjectKeyFromObject(providerSecret), providerSecret); err != nil {
@@ -41,11 +41,11 @@ func (p *providerFactory) DNSProviderFactory(ctx context.Context, managedZone *v
 
 	switch providerSecret.Type {
 	case "kuadrant.io/aws":
-		dnsProvider, err := aws.NewProviderFromSecret(providerSecret)
+		dnsProvider, err := aws.NewProviderFromSecret(providerSecret, provider.Config)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create dns provider from secret: %v", err)
 		}
-		log.Log.V(1).Info("Route53 provider created", "managed zone:", managedZone.Name)
+		log.Log.V(1).Info("Route53 dns provider initialized", "provider.SecretRef.Name", provider.SecretRef.Name, "provider.SecretRef.Namespace", provider.SecretRef.Namespace)
 
 		return dnsProvider, nil
 
