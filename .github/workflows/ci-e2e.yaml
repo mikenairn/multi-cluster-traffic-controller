@@ -44,9 +44,8 @@ jobs:
         run: |
           echo "AWS_DNS_PUBLIC_ZONE_ID=${{ secrets.E2E_AWS_DNS_PUBLIC_ZONE_ID }}" >> controller-config.env
           echo "ZONE_ROOT_DOMAIN=${{ secrets.E2E_AWS_DNS_PUBLIC_ZONE_NAME }}" >> controller-config.env
-          echo "ZONE_NAME"=${{ secrets.E2E_GCP_ZONE_NAME }}" >> controller-config.env 
-          echo "ZONE_DNS_NAME"=${{ secrets.E2E_GCP_ZONE_DNS_NAME }}" >> controller-config.env
-
+          echo "ZONE_NAME=${{ secrets.E2E_GCP_ZONE_NAME }}" >> controller-config.env 
+          echo "ZONE_DNS_NAME=${{ secrets.E2E_GCP_ZONE_DNS_NAME }}" >> controller-config.env
       - name: Create aws-credentials.env
         run: |
           echo "AWS_ACCESS_KEY_ID=${{ secrets.E2E_AWS_ACCESS_KEY_ID }}" >> aws-credentials.env
