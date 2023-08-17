@@ -58,7 +58,6 @@ jobs:
       - name: Setup environment
         run: |
           export OCM_SINGLE=1
-          export DNS=MUTLI
           make local-setup
       - name: Deploy MGC
         run: |
@@ -71,8 +70,6 @@ jobs:
           export TEST_HUB_NAMESPACE=multi-cluster-gateways
           export TEST_HUB_KUBE_CONTEXT=kind-mgc-control-plane
           export TEST_MANAGED_ZONE=${{ secrets.E2E_AWS_DNS_PUBLIC_ZONE_NAME }}
-          export TEST_MANAGED_ZONE_GCP=${{ secrets.E2E_GCP_DNS_PUBLIC_ZONE_NAME }}
-
           make test-e2e
       - name: Dump MGC logs
         if: ${{ failure() }}
