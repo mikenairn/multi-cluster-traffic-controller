@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - GH-258-GCP_suggested_updates
     paths-ignore:
       - '**.adoc'
       - '**.md'
