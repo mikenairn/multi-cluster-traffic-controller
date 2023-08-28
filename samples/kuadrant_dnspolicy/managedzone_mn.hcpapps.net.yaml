@@ -1,0 +1,13 @@
+apiVersion: kuadrant.io/v1alpha1
+kind: ManagedZone
+metadata:
+  name: mn.hcpapps.net
+  namespace: multi-cluster-gateways
+spec:
+  id: Z04114632NOABXYWH93QU
+  domainName: mn.hcpapps.net
+  description: "mn.hcpapps.net managed domain"
+  dnsProviderSecretRef:
+    name: mgc-aws-credentials
+    namespace: multi-cluster-gateways
+    type: AWS
