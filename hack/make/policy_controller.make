@@ -9,7 +9,7 @@ build-policy-controller: manifests generate fmt vet ## Build controller binary.
 
 .PHONY: run-policy-controller
 run-policy-controller: manifests generate fmt vet  install
-	go run ./cmd/gateway_controller/main.go \
+	go run ./cmd/policy_controller/main.go \
 	    --metrics-bind-address=:8090 \
 	    --health-probe-bind-address=:8091 \
 	    --zap-log-level=$(LOG_LEVEL)
