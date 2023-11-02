@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/health"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-apis/v1alpha1"
 )
 
 type StatusUpdateProbeNotifier struct {

@@ -15,7 +15,7 @@ import (
 	utilnet "k8s.io/apimachinery/pkg/util/net"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-apis/v1alpha1"
 )
 
 // QueuedProbeWorker funnels incoming health check requests from health probes,

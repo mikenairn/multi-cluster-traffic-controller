@@ -42,8 +42,8 @@ import (
 	"github.com/kuadrant/kuadrant-operator/pkg/reconcilers"
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/_internal/conditions"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/events"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-apis/v1alpha1"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-controllers/events"
 )
 
 const (

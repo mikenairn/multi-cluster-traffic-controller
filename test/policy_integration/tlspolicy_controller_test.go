@@ -21,7 +21,7 @@ import (
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/_internal/conditions"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	. "github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/tlspolicy"
+	. "github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-controllers/tlspolicy"
 	. "github.com/Kuadrant/multicluster-gateway-controller/test/util"
 )
 

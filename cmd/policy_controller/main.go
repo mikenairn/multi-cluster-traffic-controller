@@ -34,12 +34,12 @@ import (
 
 	"github.com/kuadrant/kuadrant-operator/pkg/reconcilers"
 
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnspolicy"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnsrecord"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/managedzone"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/tlspolicy"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/dnsprovider"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-apis/v1alpha1"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-controllers/dnspolicy"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-controllers/dnsrecord"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-controllers/managedzone"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-controllers/tlspolicy"
 )
 
 var (

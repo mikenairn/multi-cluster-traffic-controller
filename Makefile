@@ -47,9 +47,17 @@ clean: ## Clean up temporary files.
 	-rm -rf ./tmp
 	-rm -rf ./config/**/charts
 
+.PHONY: gateway-manifests
+gateway-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) rbac:roleName=manager-role paths="./pkg/controllers/..." output:rbac:artifacts:config=config/rbac
+
+.PHONY: policy-manifests
+policy-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
+	$(CONTROLLER_GEN) crd paths="./pkg/policy-apis/..." output:crd:artifacts:config=config/policy-controller/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role paths="./pkg/policy-controllers/..." output:rbac:artifacts:config=config/policy-controller/rbac
+
 .PHONY: manifests
-manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd paths="./..." output:crd:artifacts:config=config/crd/bases
+manifests: gateway-manifests policy-manifests ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.

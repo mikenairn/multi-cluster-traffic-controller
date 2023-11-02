@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/_internal/metadata"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
+	"github.com/Kuadrant/multicluster-gateway-controller/pkg/policy-apis/v1alpha1"
 )
 
 // ProbeEventMapper is an EventHandler that maps DNSHealthCheckProbe object events to policy events.
