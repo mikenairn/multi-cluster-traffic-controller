@@ -1,14 +1,14 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 # Adds namespace to all resources.
-namespace: multicluster-gateway-controller-system
+namespace: policy-controller-system
 
 # Value of this field is prepended to the
 # names of all resources, e.g. a deployment named
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: mgc-
+namePrefix: pc-
 
 # Labels to add to all resources and selectors.
 #commonLabels:
@@ -29,10 +29,6 @@ namePrefix: mgc-
 #- webhookcainjection_patch.yaml
 
 resources:
+- ../crd
 - ../rbac
-- namespace.yaml
 - ../manager
-- ../add-on-manager
-- ../policy-controller/default
-patches:
-- path: manager_metrics_patch.yaml
