@@ -19,7 +19,6 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
-	"time"
 
 	"github.com/go-logr/logr"
 	certman "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1"
@@ -42,13 +41,7 @@ import (
 	"github.com/kuadrant/kuadrant-operator/pkg/reconcilers"
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	. "github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnshealthcheckprobe"
-	. "github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnspolicy"
-	. "github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/managedzone"
 	. "github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/tlspolicy"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/health"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/provider"
-	providerFake "github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/provider/fake"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -56,30 +49,12 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	cfg                *rest.Config
-	k8sClient          client.Client
-	testEnv            *envtest.Environment
-	ctx                context.Context
-	cancel             context.CancelFunc
-	logger             logr.Logger
-	dnsProviderFactory = &providerFake.Factory{
-		ProviderForFunc: func(ctx context.Context, pa v1alpha1.ProviderAccessor) (provider.Provider, error) {
-			return &providerFake.Provider{
-				EnsureFunc: func(record *v1alpha1.DNSRecord, zone *v1alpha1.ManagedZone) error {
-					return nil
-				},
-				DeleteFunc: func(record *v1alpha1.DNSRecord, zone *v1alpha1.ManagedZone) error {
-					return nil
-				},
-				EnsureManagedZoneFunc: func(zone *v1alpha1.ManagedZone) (provider.ManagedZoneOutput, error) {
-					return provider.ManagedZoneOutput{}, nil
-				},
-				DeleteManagedZoneFunc: func(zone *v1alpha1.ManagedZone) error {
-					return nil
-				},
-			}, nil
-		},
-	}
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	ctx       context.Context
+	cancel    context.CancelFunc
+	logger    logr.Logger
 )
 
 func testClient() client.Client { return k8sClient }
@@ -151,34 +126,6 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	healthQueue := health.NewRequestQueue(1 * time.Second)
-	err = k8sManager.Add(healthQueue)
-	Expect(err).ToNot(HaveOccurred())
-
-	monitor := health.NewMonitor()
-	err = k8sManager.Add(monitor)
-	Expect(err).ToNot(HaveOccurred())
-
-	healthServer := &testHealthServer{
-		Port: 3333,
-	}
-	err = k8sManager.Add(healthServer)
-	Expect(err).ToNot(HaveOccurred())
-
-	dnsPolicyBaseReconciler := reconcilers.NewBaseReconciler(
-		k8sManager.GetClient(), k8sManager.GetScheme(), k8sManager.GetAPIReader(),
-		logger.WithName("dnspolicy"),
-		k8sManager.GetEventRecorderFor("DNSPolicy"),
-	)
-
-	err = (&DNSPolicyReconciler{
-		TargetRefReconciler: reconcilers.TargetRefReconciler{
-			BaseReconciler: dnsPolicyBaseReconciler,
-		},
-		ProviderFactory: dnsProviderFactory,
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
 	tlsPolicyBaseReconciler := reconcilers.NewBaseReconciler(
 		k8sManager.GetClient(), k8sManager.GetScheme(), k8sManager.GetAPIReader(),
 		logger.WithName("tlspolicy"),
@@ -189,20 +136,6 @@ var _ = BeforeSuite(func() {
 		TargetRefReconciler: reconcilers.TargetRefReconciler{
 			BaseReconciler: tlsPolicyBaseReconciler,
 		},
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = (&ManagedZoneReconciler{
-		Client:          k8sManager.GetClient(),
-		Scheme:          k8sManager.GetScheme(),
-		ProviderFactory: dnsProviderFactory,
-	}).SetupWithManager(k8sManager)
-	Expect(err).ToNot(HaveOccurred())
-
-	err = (&DNSHealthCheckProbeReconciler{
-		Client:        k8sManager.GetClient(),
-		HealthMonitor: monitor,
-		Queue:         healthQueue,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

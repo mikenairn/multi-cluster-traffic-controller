@@ -123,6 +123,8 @@ type TLSPolicy struct {
 	Status TLSPolicyStatus `json:"status,omitempty"`
 }
 
+func (p *TLSPolicy) Kind() string { return p.TypeMeta.Kind }
+
 func (p *TLSPolicy) GetWrappedNamespace() gatewayapiv1.Namespace {
 	return gatewayapiv1.Namespace(p.Namespace)
 }

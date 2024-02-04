@@ -167,7 +167,7 @@ func (r *TLSPolicyReconciler) reconcileResources(ctx context.Context, tlsPolicy 
 	}
 
 	// set direct back ref - i.e. claim the target network object as taken asap
-	if err = r.ReconcileTargetBackReference(ctx, client.ObjectKeyFromObject(tlsPolicy), targetNetworkObject, TLSPolicyBackRefAnnotation); err != nil {
+	if err = r.ReconcileTargetBackReference(ctx, tlsPolicy, targetNetworkObject, TLSPolicyBackRefAnnotation); err != nil {
 		gatewayCondition = conditions.BuildPolicyAffectedCondition(TLSPolicyAffected, tlsPolicy, targetNetworkObject, conditions.PolicyReasonConflicted, err)
 		updateErr := r.updateGatewayCondition(ctx, gatewayCondition, gatewayDiffObj)
 		return errors.Join(fmt.Errorf("reconcile TargetBackReference error %w", err), updateErr)

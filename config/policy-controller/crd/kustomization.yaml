@@ -2,10 +2,6 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/kuadrant.io_dnsrecords.yaml
-- bases/kuadrant.io_dnspolicies.yaml
-- bases/kuadrant.io_managedzones.yaml
-- bases/kuadrant.io_dnshealthcheckprobes.yaml
 - bases/kuadrant.io_tlspolicies.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 

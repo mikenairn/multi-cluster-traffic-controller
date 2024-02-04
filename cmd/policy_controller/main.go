@@ -19,7 +19,6 @@ package main
 import (
 	"flag"
 	"os"
-	"time"
 
 	certmanv1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -38,15 +37,7 @@ import (
 	"github.com/kuadrant/kuadrant-operator/pkg/reconcilers"
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnshealthcheckprobe"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnspolicy"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/dnsrecord"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/managedzone"
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/controllers/tlspolicy"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/health"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/provider"
-	_ "github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/provider/aws"
-	_ "github.com/Kuadrant/multicluster-gateway-controller/pkg/dns/provider/google"
 )
 
 var (
@@ -93,56 +84,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	dnsProviderFactory := provider.NewFactory(mgr.GetClient())
-
-	healthMonitor := health.NewMonitor()
-	healthCheckQueue := health.NewRequestQueue(time.Second * 5)
-
-	if err := mgr.Add(healthMonitor); err != nil {
-		setupLog.Error(err, "unable to start health monitor")
-		os.Exit(1)
-	}
-
-	if err := mgr.Add(healthCheckQueue); err != nil {
-		setupLog.Error(err, "unable to start health check queue")
-		os.Exit(1)
-	}
-
-	if err = (&dnsrecord.DNSRecordReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		ProviderFactory: dnsProviderFactory,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
-		os.Exit(1)
-	}
-
-	dnsPolicyBaseReconciler := reconcilers.NewBaseReconciler(
-		mgr.GetClient(), mgr.GetScheme(), mgr.GetAPIReader(),
-		log.Log.WithName("dnspolicy"),
-		mgr.GetEventRecorderFor("DNSPolicy"),
-	)
-
-	if err = (&dnspolicy.DNSPolicyReconciler{
-		TargetRefReconciler: reconcilers.TargetRefReconciler{
-			BaseReconciler: dnsPolicyBaseReconciler,
-		},
-		ProviderFactory: dnsProviderFactory,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DNSPolicy")
-		os.Exit(1)
-	}
-
-	if err = (&dnshealthcheckprobe.DNSHealthCheckProbeReconciler{
-		Client:        mgr.GetClient(),
-		HealthMonitor: healthMonitor,
-		Queue:         healthCheckQueue,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "DNSHealthCheckProbe")
-		os.Exit(1)
-	}
-	//+kubebuilder:scaffold:builder
-
 	tlsPolicyBaseReconciler := reconcilers.NewBaseReconciler(
 		mgr.GetClient(), mgr.GetScheme(), mgr.GetAPIReader(),
 		log.Log.WithName("tlspolicy"),
@@ -158,15 +99,6 @@ func main() {
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder
-
-	if err = (&managedzone.ManagedZoneReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		ProviderFactory: dnsProviderFactory,
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "ManagedZone")
-		os.Exit(1)
-	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
