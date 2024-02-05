@@ -1,0 +1,2 @@
+resources:
+- github.com/kuadrant/kuadrant-operator/config/deploy?ref=unified_kuadrant
