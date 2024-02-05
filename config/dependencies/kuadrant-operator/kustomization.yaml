@@ -1,0 +1,2 @@
+resources:
+- github.com/mikenairn/kuadrant-operator/config/deploy?ref=unified_kuadrant_dnspolicy
