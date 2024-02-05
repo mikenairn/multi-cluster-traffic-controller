@@ -13,7 +13,6 @@ import (
 
 	certmanv1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1"
 	certmanmetav1 "github.com/jetstack/cert-manager/pkg/apis/meta/v1"
-	kuadrantdnsv1alpha1 "github.com/kuadrant/kuadrant-dns-operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -26,10 +25,10 @@ import (
 	gatewayapiv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapiv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	kuadrantdnsv1alpha1 "github.com/kuadrant/kuadrant-dns-operator/api/v1alpha1"
 	kuadrantv1alpha1 "github.com/kuadrant/kuadrant-operator/api/v1alpha1"
 
 	"github.com/Kuadrant/multicluster-gateway-controller/pkg/_internal/conditions"
-	"github.com/Kuadrant/multicluster-gateway-controller/pkg/apis/v1alpha1"
 	. "github.com/Kuadrant/multicluster-gateway-controller/test/util"
 )
 
@@ -52,7 +51,7 @@ var _ = Describe("Gateway single target cluster", func() {
 
 	var gw *gatewayapiv1.Gateway
 	var placement *ocmclusterv1beta1.Placement
-	var tlsPolicy *v1alpha1.TLSPolicy
+	var tlsPolicy *kuadrantv1alpha1.TLSPolicy
 
 	BeforeEach(func(ctx SpecContext) {
 		testID = "t-gw-mgc-" + tconfig.GenerateName()
@@ -98,19 +97,19 @@ var _ = Describe("Gateway single target cluster", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		By("setting up TLSPolicy in the hub")
-		tlsPolicy = &v1alpha1.TLSPolicy{
+		tlsPolicy = &kuadrantv1alpha1.TLSPolicy{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      testID,
 				Namespace: tconfig.HubNamespace(),
 			},
-			Spec: v1alpha1.TLSPolicySpec{
+			Spec: kuadrantv1alpha1.TLSPolicySpec{
 				TargetRef: gatewayapiv1alpha2.PolicyTargetReference{
 					Group:     "gateway.networking.k8s.io",
 					Kind:      "Gateway",
 					Name:      gatewayapiv1.ObjectName(testID),
 					Namespace: Pointer(gatewayapiv1.Namespace(tconfig.HubNamespace())),
 				},
-				CertificateSpec: v1alpha1.CertificateSpec{
+				CertificateSpec: kuadrantv1alpha1.CertificateSpec{
 					IssuerRef: certmanmetav1.ObjectReference{
 						Name:  "glbc-ca",
 						Kind:  "ClusterIssuer",
@@ -475,7 +474,7 @@ var _ = Describe("Gateway single target cluster", func() {
 					}
 					By("when deleting tls policy, checking that tls secrets are removed")
 					{
-						tlsPolicy = &v1alpha1.TLSPolicy{
+						tlsPolicy = &kuadrantv1alpha1.TLSPolicy{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      testID,
 								Namespace: tconfig.HubNamespace(),

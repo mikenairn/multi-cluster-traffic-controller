@@ -4,7 +4,6 @@ go 1.21
 
 require (
 	github.com/go-logr/logr v1.3.0
-	github.com/google/uuid v1.4.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/jetstack/cert-manager v1.7.1
 	github.com/kuadrant/kuadrant-dns-operator v0.0.0-20240202223525-b889335b228f
@@ -51,6 +50,7 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20231205033806-a5a03c77bf08 // indirect
+	github.com/google/uuid v1.4.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
