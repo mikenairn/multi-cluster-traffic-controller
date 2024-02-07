@@ -34,7 +34,8 @@ When deploying the multicluster gateway controller using the make targets, the f
 * go >= 1.21
 
 ### 1. Running the controller in the cluster:
-1. Set up your DNS Provider by following these [steps](./docs/dnspolicy/dns-provider.md)
+[//]: # (ToD mnairn)
+[//]: # (1. Set up your DNS Provider by following these [steps]&#40;./docs/dnspolicy/dns-provider.md&#41;)
 
 1. Setup your local environment 
     ```sh
@@ -63,7 +64,9 @@ When deploying the multicluster gateway controller using the make targets, the f
     ```
 
 ## 2. Running the controller locally:
-1. Set up your DNS Provider by following these [steps](./docs/dnspolicy/dns-provider.md)
+
+[//]: # (ToD mnairn)
+[//]: # (1. Set up your DNS Provider by following these [steps]&#40;./docs/dnspolicy/dns-provider.md&#41;)
 
 1.  Setup your local environment 
 

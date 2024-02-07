@@ -111,7 +111,8 @@ The health check section is optional, the following fields are available:
 - `port`: The port to connect to
 - `protocol`: The protocol to use for this connection
 
-For more information about DNS Health Checks, see [this guide](../dnspolicy/dns-health-checks.md).
+[//]: # (ToDo mnairn)
+[//]: # (For more information about DNS Health Checks, see [this guide]&#40;../dnspolicy/dns-health-checks.md&#41;.)
 
 #### Checking status of health checks
 To list all health checks:

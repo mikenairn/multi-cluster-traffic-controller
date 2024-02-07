@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	certmanv1 "github.com/jetstack/cert-manager/pkg/apis/certmanager/v1"
-	certmanmetav1 "github.com/jetstack/cert-manager/pkg/apis/meta/v1"
+	certmanv1 "github.com/cert-manager/cert-manager/pkg/apis/certmanager/v1"
+	certmanmetav1 "github.com/cert-manager/cert-manager/pkg/apis/meta/v1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
